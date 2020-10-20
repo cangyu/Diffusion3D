@@ -1,21 +1,18 @@
 #include "../inc/noc.h"
 
-static inline void Minimum(const FLM_VECTOR &d, const FLM_VECTOR &S, FLM_VECTOR &E, FLM_VECTOR &T)
+static inline void Minimum(const FLM_VECTOR &d, const FLM_VECTOR &S, FLM_VECTOR &E)
 {
     E = (d.dot(S) / (d.dot(d))) * d;
-    T = S - E;
 }
 
-static inline void Orthogonal(const FLM_VECTOR &d, const FLM_VECTOR &S, FLM_VECTOR &E, FLM_VECTOR &T)
+static inline void Orthogonal(const FLM_VECTOR &d, const FLM_VECTOR &S, FLM_VECTOR &E)
 {
     E = S.norm() / d.norm() * d;
-    T = S - E;
 }
 
-static inline void OverRelaxed(const FLM_VECTOR &d, const FLM_VECTOR &S, FLM_VECTOR &E, FLM_VECTOR &T)
+static inline void OverRelaxed(const FLM_VECTOR &d, const FLM_VECTOR &S, FLM_VECTOR &E)
 {
     E = (S.dot(S) / d.dot(S)) * d;
-    T = S - E;
 }
 
 /**
@@ -27,5 +24,6 @@ static inline void OverRelaxed(const FLM_VECTOR &d, const FLM_VECTOR &S, FLM_VEC
  */
 void noc_decompose(const FLM_VECTOR &d, const FLM_VECTOR &S, FLM_VECTOR &E, FLM_VECTOR &T)
 {
-    OverRelaxed(d, S, E, T);
+    OverRelaxed(d, S, E);
+    T = S - E;
 }
