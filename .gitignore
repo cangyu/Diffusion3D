@@ -1,3 +1,14 @@
+test
+bin
+build
+
+cmake-*
+
+.clion
+.vs
+.vscode
+.idea
+
 # Prerequisites
 *.d
 
