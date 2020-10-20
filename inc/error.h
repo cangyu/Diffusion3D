@@ -6,6 +6,27 @@
 #include <cstddef>
 #include "basic.h"
 
+struct wrong_face : public std::invalid_argument
+{
+    explicit wrong_face(size_t idx) :
+        std::invalid_argument(std::to_string(idx))
+    {}
+};
+
+struct unsupported_shape : public std::invalid_argument
+{
+    unsupported_shape(const std::string &part, size_t idx, int shape) :
+        std::invalid_argument("\"" + std::to_string(shape) + "\" on " + part + " " + std::to_string(idx) + ".")
+    {}
+};
+
+struct invalid_boundary_flag : public std::invalid_argument
+{
+    invalid_boundary_flag(const std::string &part, size_t idx, int flag) :
+        std::invalid_argument("\"" + std::to_string(flag) + "\" on " + part + " " + std::to_string(idx) + ".")
+    {}
+};
+
 struct failed_to_open_file : public std::runtime_error
 {
     explicit failed_to_open_file(const std::string &fn) :
@@ -32,27 +53,6 @@ struct unsupported_boundary_condition : public std::invalid_argument
 
     explicit unsupported_boundary_condition(const std::string &bc) :
         std::invalid_argument(bc)
-    {}
-};
-
-struct dirichlet_bc_is_not_supported : public unsupported_boundary_condition
-{
-    dirichlet_bc_is_not_supported() :
-        unsupported_boundary_condition(FLM_BC_MATH::Dirichlet)
-    {}
-};
-
-struct neumann_bc_is_not_supported : public unsupported_boundary_condition
-{
-    neumann_bc_is_not_supported() :
-        unsupported_boundary_condition(FLM_BC_MATH::Neumann)
-    {}
-};
-
-struct robin_bc_is_not_supported : public unsupported_boundary_condition
-{
-    robin_bc_is_not_supported() :
-        unsupported_boundary_condition(FLM_BC_MATH::Robin)
     {}
 };
 
