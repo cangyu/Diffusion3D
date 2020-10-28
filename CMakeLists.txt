@@ -23,9 +23,7 @@ add_executable(PIPE
 	case/pipe/bc.cc)
 
 target_link_libraries(CAVITY PUBLIC SOLVER)
-
 target_link_libraries(PIPE PUBLIC SOLVER)
 
 install(TARGETS CAVITY RUNTIME DESTINATION ${CMAKE_SOURCE_DIR}/bin)
-
 install(TARGETS PIPE RUNTIME DESTINATION ${CMAKE_SOURCE_DIR}/bin)
