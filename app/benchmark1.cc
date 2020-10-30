@@ -6,12 +6,10 @@
 #include "../inc/element.h"
 #include "../inc/io.h"
 #include "../inc/geom.h"
+#include "../inc/ic.h"
 #include "../inc/bc.h"
 #include "../inc/lsq.h"
-#include "../inc/ic.h"
 #include "../inc/spatial.h"
-#include "../inc/temporal.h"
-#include "../inc/diagnose.h"
 #include "../inc/misc.h"
 
 std::vector<Patch *> patch;
@@ -191,7 +189,7 @@ int main(int argc, char *argv[])
     std::cout << "\nPreparing Least-Square coefficients ... ";
     {
         tick_begin = clock();
-        //calc_lsq_coefficient_matrix();
+        prepare_lsq();
         tick_end = clock();
     }
     std::cout << duration(tick_begin, tick_end) << "s" << std::endl;
@@ -244,41 +242,6 @@ int main(int argc, char *argv[])
 
     /// Solve
     std::cout << "\nStarting calculation ... " << std::endl;
-    while (iter <= MAX_ITER && t <= MAX_TIME)
-    {
-        ++iter;
-        t += dt;
-
-        /// Time-Stepping
-        std::cout << "\nIter" << iter << ": " << "t=" << t << "s, dt=" << dt << "s" << std::endl;
-        {
-            tick_begin = clock();
-            //ForwardEuler(dt);
-            tick_end = clock();
-        }
-        std::cout << duration(tick_begin, tick_end) << "s CPU time" << std::endl;
-
-        /// Check
-        bool diverge_flag = false;
-        diagnose(diverge_flag);
-        if (diverge_flag)
-        {
-            /// TODO
-        }
-
-        /// Output
-        if (!(iter % OUTPUT_GAP))
-        {
-            const std::string fn = OUTPUT_PREFIX + std::to_string(iter) + ".txt";
-            std::filesystem::path p_output(RUN_TAG);
-            p_output.append(fn);
-            std::ofstream dts(p_output);
-            if (dts.fail())
-                throw failed_to_open_file(p_output.filename());
-            write_data(dts, iter, t);
-            dts.close();
-        }
-    }
 
     /// Finalize
     std::cout << "\nReleasing Memory ... " << std::endl;
