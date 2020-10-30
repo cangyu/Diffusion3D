@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <vector>
+#include <array>
 #include <string>
 #include "basic.h"
 #include "error.h"
@@ -14,140 +15,163 @@ class Cell;
 class Node
 {
 public:
-    size_t index; /// 1-based global index
-    bool at_boundary; /// Boundary flag
-    FLM_VECTOR coordinate; /// 3D cartesian location
+    /// 1-based global index
+    size_t index;
 
-    /* Connectivity to cells */
+    /// Boundary flag
+    bool at_boundary;
+
+    /// 3D cartesian location
+    FLM_VECTOR coordinate;
+
+    /// Connectivity to cells
     std::vector<Cell *> cell_dependency;
+
+    /// Weighting coefficients for cells
     std::vector<FLM_SCALAR> cell_weighting1; /// 1/||r||
     std::vector<FLM_SCALAR> cell_weighting2; /// 1/||r||^2
     std::vector<FLM_SCALAR> cell_weighting3; /// 1/V
+    std::vector<FLM_SCALAR> cell_weighting4; /// Linear preserving
 
-    /* Variable */
-    FLM_SCALAR T; /// Temperature
+    /// Variable
+    FLM_SCALAR T;
 };
 
 class Face
 {
 public:
-    size_t index; /// 1-based global index
-    FLM_VECTOR centroid; /// 3D cartesian location of centroid
-    FLM_SCALAR area; /// Area of the face
+    /// 1-based global index
+    size_t index;
 
-    /* Connectivity to nodes */
+    /// 3D cartesian location of centroid
+    FLM_VECTOR centroid;
+
+    /// Area of the face
+    FLM_SCALAR area;
+
+    /// Connection to high-level
+    Patch *parent;
+
+    /// Connectivity to nodes
     std::vector<Node *> vertex;
 
-    /* Connectivity to cells */
-    Cell *cell_dependency[2];
-    FLM_SCALAR cell_weighting1[2]; /// 1/||r||
-    FLM_SCALAR cell_weighting2[2]; /// 1/||r||^2
-    FLM_SCALAR cell_weighting3[2]; /// 1/V
-    FLM_VECTOR r[2]; /// Displacement vector
-    FLM_VECTOR n[2]; /// Unit normal vector
+    /// Connectivity to cells
+    Cell *c0, *c1;
 
-    /* Property */
+    /// Weighting coefficients for cells
+    std::array<FLM_SCALAR, 2> cell_weighting1; /// 1/||r||
+    std::array<FLM_SCALAR, 2> cell_weighting2; /// 1/||r||^2
+    std::array<FLM_SCALAR, 2> cell_weighting3; /// 1/V
+
+    /// Displacement vector
+    FLM_VECTOR r0; /// From centroid of "c0" to face centroid.
+    FLM_VECTOR r1; /// From centroid of "c1" to face centroid.
+
+    /// Unit normal vector
+    FLM_VECTOR n01; /// From centroid of "c0" to that of "c1".
+    FLM_VECTOR n10; /// From centroid of "c1" to that of "c0".
+
+    /// Skewness factor
+    FLM_SCALAR alpha;
+
+    /// Property
     FLM_SCALAR kappa; /// Thermal conductivity
 
-    /* Variable */
-    FLM_SCALAR T; /// Temperature
+    /// Variable
+    FLM_SCALAR T;
 
 public:
     virtual ~Face() = default;
 
     virtual bool at_boundary() const = 0;
-
-    virtual void set_parent(Patch *p) = 0;
-
-    Cell *c0() { return cell_dependency[0]; }
-
-    Cell *c1() { return cell_dependency[1]; }
-
-    const FLM_VECTOR &r0() const { return r[0]; }
-
-    const FLM_VECTOR &r1() const { return r[1]; }
-
-    const FLM_VECTOR &n0() const { return n[0]; } /// From c0 to c1
-
-    const FLM_VECTOR &n1() const { return n[1]; } /// From c1 to c0
 };
 
 class InternalFace : public Face
 {
 public:
-    /* Gradient */
+    /// Gradient
     FLM_VECTOR grad_T;
 
 public:
     ~InternalFace() = default;
 
-    [[nodiscard]] bool at_boundary() const override { return false; }
-
-    void set_parent(Patch *p) override { throw no_parent_patch(index); }
+    bool at_boundary() const override { return false; }
 };
 
 class BoundaryFace : public Face
 {
 public:
-    Patch *parent; /// Connection to high-level
-
-    /* Gradient */
-    FLM_SCALAR sn_grad_T; /// In surface outward normal direction
+    /// Gradient
+    FLM_SCALAR sn_grad_T; /// In surface OUTWARD normal direction.
 
 public:
     ~BoundaryFace() = default;
 
-    [[nodiscard]] bool at_boundary() const override { return true; }
-
-    void set_parent(Patch *grp) override { parent = grp; }
+    bool at_boundary() const override { return true; }
 };
 
 class Cell
 {
 public:
-    size_t index; /// 1-based global index
-    FLM_VECTOR centroid; /// 3D cartesian location of centroid
-    FLM_SCALAR volume; /// Volume of the cell
+    /// 1-based global index
+    size_t index;
 
-    /* Connectivity to nodes */
+    /// 3D cartesian location of centroid
+    FLM_VECTOR centroid;
+
+    /// Volume of the cell
+    FLM_SCALAR volume;
+
+    /// Connectivity to nodes
     std::vector<Node *> vertex;
 
-    /* Connectivity to faces */
+    /// Connectivity to faces
     std::vector<Face *> surface;
-    std::vector<FLM_VECTOR> n; /// Surface outward unit normal vector, follow the order in "surface"
-    std::vector<FLM_VECTOR> S; /// Surface outward normal vector, follow the order in "surface"
-    std::vector<FLM_VECTOR> S_E, S_T; /// Non-Orthogonal decomposition, follow the order in "surface"
 
-    /* Connectivity to cells */
-    std::vector<Cell *> cell_adjacency; /// Follow the order in "surface"
-    std::vector<FLM_VECTOR> d; /// Displacement vector between adjacent cell centroids
-    std::vector<FLM_VECTOR> e; /// Unit displacement vector between adjacent cell centroids
-    Eigen::Matrix<FLM_SCALAR, 3, Eigen::Dynamic> J_INV_T; /// Coefficient matrix used by LSQ
+    /// Surface OUTWARD normal vector.
+    /// Follow the order in "surface".
+    std::vector<FLM_VECTOR> S;
 
-    /* Property */
+    /// Non-Orthogonal decomposition of "S"
+    /// "S" = "S_E" + "S_T"
+    /// Follow the order in "surface"
+    std::vector<FLM_VECTOR> S_E, S_T;
+
+    /// Connectivity to cells
+    /// Follow the order in "surface".
+    std::vector<Cell *> cell_adjacency;
+
+    /// Displacement vector between adjacent cell centroids
+    /// To face centroid if adjacent cell is empty.
+    std::vector<FLM_VECTOR> d;
+
+    /// Property
     FLM_SCALAR kappa; /// Thermal conductivity
 
-    /* Variable */
-    FLM_SCALAR T; /// Temperature
+    /// Variable
+    FLM_SCALAR T;
 
-    /* Gradient */
+    /// Gradient
     FLM_VECTOR grad_T;
 };
 
 class Patch
 {
 public:
-    std::string name; /// Identifier
+    /// Identifier
+    std::string name;
 
-    /* Components */
+    /// Included faces
     std::vector<BoundaryFace *> surface;
+
+    /// Included nodes
     std::vector<Node *> vertex;
 
-    /* B.C. physical classification */
+    /// B.C. physical classification
     FLM_BC_PHY BC;
 
-    /* B.C. mathematical specification */
-    FLM_BC_MATH T; /// Temperature
+    /// B.C. mathematical specification
+    FLM_BC_MATH T;
 };
 
 #endif

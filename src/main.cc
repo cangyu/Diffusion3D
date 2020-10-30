@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 
     banner();
 
-    /* Parse parameters */
+    /// Parse parameters
     int cnt = 1;
     while (cnt < argc)
     {
@@ -121,9 +121,8 @@ int main(int argc, char *argv[])
 
         if (!std::filesystem::exists(RUN_TAG) && !std::filesystem::create_directory(RUN_TAG))
             throw failed_to_create_folder(RUN_TAG);
-
-        std::cout << "\"" << RUN_TAG << "\"" << std::endl;
     }
+    std::cout << "\"" << RUN_TAG << "\"" << std::endl;
 
     if (resume_mode)
     {
@@ -152,13 +151,13 @@ int main(int argc, char *argv[])
         DATA_PATH = p_data.string();
     }
 
-    /* Report */
+    /// Report
     std::cout << "\ndt=" << dt << "s" << std::endl;
     std::cout << "\nMax iterations: " << MAX_ITER << std::endl;
     std::cout << "\nMax run time: " << MAX_TIME << "s" << std::endl;
     std::cout << "\nRecord solution every " << OUTPUT_GAP << " iteration" << std::endl;
 
-    /* Init */
+    /// Init
     std::cout << "\nLoading mesh from \"" << MESH_PATH << "\" ... ";
     {
         std::ifstream in(MESH_PATH);
@@ -171,13 +170,16 @@ int main(int argc, char *argv[])
     }
     std::cout << duration(tick_begin, tick_end) << "s" << std::endl;
 
-    std::cout << "\nPreparing auxiliary quantities ... ";
+    std::cout << "\nPreparing geometric quantities ... ";
     {
         tick_begin = clock();
-        calc_geom_val();
+        calculate_geometric_value();
         tick_end = clock();
     }
     std::cout << duration(tick_begin, tick_end) << "s" << std::endl;
+
+    std::cout << "\nCalculating skewness factor on each face ... " << std::endl;
+    check_skewness();
 
     std::cout << "\nSetting B.C. for each patch ... ";
     {
@@ -189,12 +191,12 @@ int main(int argc, char *argv[])
     std::cout << "\nPreparing Least-Square coefficients ... ";
     {
         tick_begin = clock();
-        calc_lsq_coefficient_matrix();
+        //calc_lsq_coefficient_matrix();
         tick_end = clock();
     }
     std::cout << duration(tick_begin, tick_end) << "s" << std::endl;
 
-    std::cout << "\nPreparing Pressure-Correction equation coefficients ... ";
+    std::cout << "\nPreparing Poisson equation coefficients ... ";
     {
         tick_begin = clock();
         /// TODO
@@ -208,7 +210,7 @@ int main(int argc, char *argv[])
         {
             tick_begin = clock();
             zero_init();
-            interp_nodal_val();
+            interpolate_nodal_value();
             tick_end = clock();
         }
         std::cout << duration(tick_begin, tick_end) << "s" << std::endl;
@@ -240,23 +242,31 @@ int main(int argc, char *argv[])
         std::cout << duration(tick_begin, tick_end) << "s" << std::endl;
     }
 
-    /* Solve */
+    /// Solve
     std::cout << "\nStarting calculation ... " << std::endl;
     while (iter <= MAX_ITER && t <= MAX_TIME)
     {
         ++iter;
         t += dt;
 
+        /// Time-Stepping
         std::cout << "\nIter" << iter << ": " << "t=" << t << "s, dt=" << dt << "s" << std::endl;
         {
             tick_begin = clock();
-            ForwardEuler(dt);
+            //ForwardEuler(dt);
             tick_end = clock();
         }
         std::cout << duration(tick_begin, tick_end) << "s CPU time" << std::endl;
 
-        diagnose();
+        /// Check
+        bool diverge_flag = false;
+        diagnose(diverge_flag);
+        if (diverge_flag)
+        {
+            /// TODO
+        }
 
+        /// Output
         if (!(iter % OUTPUT_GAP))
         {
             const std::string fn = OUTPUT_PREFIX + std::to_string(iter) + ".txt";
@@ -270,8 +280,8 @@ int main(int argc, char *argv[])
         }
     }
 
-    /* Finalize */
-    std::cout << "\nReleasing Memory ..." << std::endl;
+    /// Finalize
+    std::cout << "\nReleasing Memory ... " << std::endl;
     {
         for (auto e : node)
             delete e;

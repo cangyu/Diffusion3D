@@ -6,7 +6,7 @@ extern std::vector<Node *> node;
 extern std::vector<Face *> face;
 extern std::vector<Cell *> cell;
 
-void diagnose()
+void diagnose(bool diverged)
 {
-
+    /// TODO
 }

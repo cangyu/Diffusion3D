@@ -7,10 +7,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include_directories(/usr/local/include/eigen3)
 
-add_library(SOLVER
+add_library(SOLVER STATIC
+	src/misc.cc
+	src/diagnose.cc
 	src/io.cc
 	src/noc.cc
-	src/geom.cc)
+	src/geom.cc
+	src/spatial.cc)
 
 add_executable(CAVITY
 	src/main.cc

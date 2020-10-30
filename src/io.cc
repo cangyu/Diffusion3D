@@ -7,9 +7,8 @@ extern std::vector<Face *> face;
 extern std::vector<Cell *> cell;
 
 /**
- * Load computation mesh in custom format,
- * which is converted from FLUENT "msh" file.
- * @param fin Input stream of the mesh file.
+ * Load computation mesh in custom format, which is converted from FLUENT "msh" file.
+ * @param fin Input stream of the converted mesh file.
  */
 void read_mesh(std::istream &fin)
 {
@@ -35,10 +34,10 @@ void read_mesh(std::istream &fin)
     {
         auto n_dst = node.at(i - 1);
 
-        // 1-based global index
+        /// 1-based global index
         n_dst->index = i;
 
-        // Boundary flag
+        /// Boundary flag
         int flag;
         fin >> flag;
         if (flag == 1)
@@ -48,10 +47,10 @@ void read_mesh(std::istream &fin)
         else
             throw invalid_boundary_flag("node", i, flag);
 
-        // 3D location
+        /// 3D location
         fin >> n_dst->coordinate.x() >> n_dst->coordinate.y() >> n_dst->coordinate.z();
 
-        // Adjacent nodes
+        /// Adjacent nodes
         size_t n_adj_node;
         fin >> n_adj_node;
         for (size_t j = 0; j < n_adj_node; ++j)
@@ -60,7 +59,7 @@ void read_mesh(std::istream &fin)
             fin >> tmp;
         }
 
-        // Dependent faces
+        /// Dependent faces
         size_t n_dep_face;
         fin >> n_dep_face;
         for (size_t j = 0; j < n_dep_face; ++j)
@@ -69,7 +68,7 @@ void read_mesh(std::istream &fin)
             fin >> tmp;
         }
 
-        // Dependent cells
+        /// Dependent cells
         size_t n_dep_cell;
         fin >> n_dep_cell;
         n_dst->cell_dependency.resize(n_dep_cell);
@@ -84,7 +83,7 @@ void read_mesh(std::istream &fin)
     /// Update face information.
     for (size_t i = 1; i <= NumOfFace; ++i)
     {
-        // Boundary flag
+        /// Boundary flag
         int flag;
         fin >> flag;
         if (flag == 1)
@@ -96,22 +95,26 @@ void read_mesh(std::istream &fin)
 
         auto f_dst = face.at(i - 1);
 
-        // 1-based global index
+        /// Connection to high-level group.
+        /// Set to empty by default
+        f_dst->parent = nullptr;
+
+        /// 1-based global index
         f_dst->index = i;
 
-        // Shape
+        /// Shape
         int shape;
         fin >> shape;
         if (shape != 3 && shape != 4)
             throw unsupported_shape("face", i, shape);
 
-        // Centroid
+        /// Centroid
         fin >> f_dst->centroid.x() >> f_dst->centroid.y() >> f_dst->centroid.z();
 
-        // Area
+        /// Area
         fin >> f_dst->area;
 
-        // Included nodes
+        /// Included nodes
         f_dst->vertex.resize(shape);
         for (int j = 0; j < shape; ++j)
         {
@@ -120,22 +123,15 @@ void read_mesh(std::istream &fin)
             f_dst->vertex.at(j) = node.at(tmp - 1);
         }
 
-        // Adjacent cells
+        /// Adjacent cells
         size_t c0, c1;
         fin >> c0 >> c1;
-        if (c0 == 0)
-            f_dst->cell_dependency[0] = nullptr;
-        else
-            f_dst->cell_dependency[0] = cell.at(c0 - 1);
+        f_dst->c0 = (c0 == 0) ? nullptr : cell.at(c0 - 1);
+        f_dst->c1 = (c1 == 0) ? nullptr : cell.at(c1 - 1);
 
-        if (c1 == 0)
-            f_dst->cell_dependency[1] = nullptr;
-        else
-            f_dst->cell_dependency[1] = cell.at(c1 - 1);
-
-        // Unit normal vector
-        fin >> f_dst->n[0].x() >> f_dst->n[0].y() >> f_dst->n[0].z();
-        fin >> f_dst->n[1].x() >> f_dst->n[1].y() >> f_dst->n[1].z();
+        /// Unit normal vector
+        fin >> f_dst->n01.x() >> f_dst->n01.y() >> f_dst->n01.z();
+        fin >> f_dst->n10.x() >> f_dst->n10.y() >> f_dst->n10.z();
     }
 
     /// Update cell information.
@@ -143,29 +139,29 @@ void read_mesh(std::istream &fin)
     {
         auto c_dst = cell.at(i - 1);
 
-        // 1-based global index
+        /// 1-based global index
         c_dst->index = i;
 
-        // Shape
+        /// Shape
         int shape;
         fin >> shape;
         int N1, N2;
-        if (shape == 2) // tet
+        if (shape == 2) /// tet
         {
             N1 = 4;
             N2 = 4;
         }
-        else if (shape == 4) // hex
+        else if (shape == 4) /// hex
         {
             N1 = 8;
             N2 = 6;
         }
-        else if (shape == 5) // pyr
+        else if (shape == 5) /// pyr
         {
             N1 = 5;
             N2 = 5;
         }
-        else if (shape == 6) // wedge
+        else if (shape == 6) /// wedge
         {
             N1 = 6;
             N2 = 5;
@@ -173,13 +169,13 @@ void read_mesh(std::istream &fin)
         else
             throw unsupported_shape("cell", i, shape);
 
-        // Centroid
+        /// Centroid
         fin >> c_dst->centroid.x() >> c_dst->centroid.y() >> c_dst->centroid.z();
 
-        // Volume
+        /// Volume
         fin >> c_dst->volume;
 
-        // Included nodes
+        /// Included nodes
         c_dst->vertex.resize(N1);
         for (int j = 0; j < N1; ++j)
         {
@@ -188,7 +184,7 @@ void read_mesh(std::istream &fin)
             c_dst->vertex.at(j) = node.at(tmp - 1);
         }
 
-        // Included faces
+        /// Included faces
         c_dst->surface.resize(N2);
         for (int j = 0; j < N2; ++j)
         {
@@ -197,24 +193,22 @@ void read_mesh(std::istream &fin)
             c_dst->surface.at(j) = face.at(tmp - 1);
         }
 
-        // Adjacent cells
+        /// Adjacent cells
         c_dst->cell_adjacency.resize(N2);
         for (int j = 0; j < N2; ++j)
         {
             size_t tmp;
             fin >> tmp;
-            if (tmp == 0)
-                c_dst->cell_adjacency.at(j) = nullptr;
-            else
-                c_dst->cell_adjacency.at(j) = cell.at(tmp - 1);
+            c_dst->cell_adjacency.at(j) = (tmp == 0) ? nullptr : cell.at(tmp - 1);
         }
 
-        // Surface unit normal vectors
-        c_dst->n.resize(N2);
+        /// Surface OUTWARD normal vectors
+        c_dst->S.resize(N2);
         for (int j = 0; j < N2; ++j)
         {
-            auto &loc_n = c_dst->n.at(j);
-            fin >> loc_n.x() >> loc_n.y() >> loc_n.z();
+            auto &tmp = c_dst->S.at(j);
+            fin >> tmp.x() >> tmp.y() >> tmp.z();
+            tmp *= c_dst->surface.at(j)->area;
         }
     }
 
@@ -222,23 +216,31 @@ void read_mesh(std::istream &fin)
     for (size_t i = 1; i <= NumOfPatch; ++i)
     {
         auto p_dst = patch.at(i - 1) = new Patch();
+
+        /// Identifier
         fin >> p_dst->name;
 
         size_t n_face, n_node;
         fin >> n_face >> n_node;
+
+        /// Included faces
         p_dst->surface.resize(n_face);
-        p_dst->vertex.resize(n_node);
         for (size_t j = 0; j < n_face; ++j)
         {
             size_t tmp;
             fin >> tmp;
-            auto ptr = dynamic_cast<BoundaryFace *>(face.at(tmp - 1));
-            if (ptr == nullptr)
+            auto f_b = dynamic_cast<BoundaryFace *>(face.at(tmp - 1));
+            if (f_b == nullptr)
                 throw wrong_face(tmp);
 
-            p_dst->surface.at(j) = ptr;
-            ptr->set_parent(p_dst);
+            p_dst->surface.at(j) = f_b;
+
+            /// Connection
+            f_b->parent = p_dst;
         }
+
+        /// Included nodes
+        p_dst->vertex.resize(n_node);
         for (size_t j = 0; j < n_node; ++j)
         {
             size_t tmp;

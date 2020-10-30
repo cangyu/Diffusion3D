@@ -1,6 +1,6 @@
 #ifndef SPATIAL_H
 #define SPATIAL_H
 
-void interp_nodal_val();
+void interpolate_nodal_value();
 
 #endif
