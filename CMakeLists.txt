@@ -16,9 +16,7 @@ add_library(SOLVER STATIC
 	src/geom.cc
 	src/temporal.cc
 	src/spatial.cc
-	src/gradient.cc
-	src/green-gauss.cc
-	src/lsq.cc)
+	src/gradient.cc)
 
 target_link_libraries(SOLVER PUBLIC Eigen3::Eigen)
 

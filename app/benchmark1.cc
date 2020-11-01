@@ -8,7 +8,7 @@
 #include "../inc/geom.h"
 #include "../inc/ic.h"
 #include "../inc/bc.h"
-#include "../inc/lsq.h"
+#include "../inc/gradient.h"
 #include "../inc/spatial.h"
 #include "../inc/misc.h"
 
